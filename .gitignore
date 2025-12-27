@@ -1,0 +1,17 @@
+# Build output
+build/
+infineon-lp-main/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Compiled firmware
+*.elf
+*.o
+*.d
+
+# Gowin IDE temp
+impl/
+*.gprj.user
