@@ -828,3 +828,179 @@ void cyw_poll(void)
         }
     }
 }
+
+/*============================================================================
+ * TODO: WiFi Connection Functions (Not Implemented Yet)
+ *============================================================================*/
+
+/*
+ * TODO 1: cyw_scan() - Сканирование WiFi сетей
+ *
+ * int cyw_scan(void *results, int max_results)
+ * {
+ *     // 1. Установить параметры сканирования
+ *     struct wl_escan_params {
+ *         uint32_t version;
+ *         uint16_t action;      // WL_SCAN_ACTION_START = 1
+ *         uint16_t sync_id;
+ *         struct wl_scan_params {
+ *             wlc_ssid_t ssid;
+ *             uint8_t bssid[6];
+ *             int8_t bss_type;  // -1 = any
+ *             uint8_t scan_type; // 0 = active
+ *             int32_t nprobes;
+ *             int32_t active_time;
+ *             int32_t passive_time;
+ *             int32_t home_time;
+ *             int32_t channel_num;
+ *             uint16_t channel_list[1];
+ *         } params;
+ *     } scan_params = {0};
+ *
+ *     scan_params.version = 1;
+ *     scan_params.action = 1;
+ *     scan_params.params.bss_type = -1;
+ *     scan_params.params.nprobes = -1;
+ *     scan_params.params.active_time = -1;
+ *     scan_params.params.passive_time = -1;
+ *     scan_params.params.home_time = -1;
+ *
+ *     // 2. Запустить сканирование
+ *     cyw_iovar("escan", &scan_params, sizeof(scan_params), true);
+ *
+ *     // 3. Ждать событий ESCAN_RESULT на SDPCM_EVENT_CHANNEL
+ *     //    Парсить WLC_E_ESCANRESULT события
+ *
+ *     // 4. Вернуть количество найденных сетей
+ *     return count;
+ * }
+ */
+
+/*
+ * TODO 2: cyw_connect() - Подключение к WiFi сети
+ *
+ * cyw_err_t cyw_connect(const char *ssid, const char *passphrase)
+ * {
+ *     // 1. Установить режим инфраструктуры
+ *     uint32_t infra = 1;
+ *     cyw_ioctl(WLC_SET_INFRA, &infra, 4, true);
+ *
+ *     // 2. Установить режим аутентификации
+ *     uint32_t auth = 0;  // Open System
+ *     cyw_ioctl(WLC_SET_AUTH, &auth, 4, true);
+ *
+ *     // 3. Установить WPA auth
+ *     uint32_t wpa_auth = 0x80;  // WPA2-PSK
+ *     cyw_iovar("wpa_auth", &wpa_auth, 4, true);
+ *
+ *     // 4. Установить PMK (пароль -> PSK)
+ *     struct {
+ *         uint16_t key_len;
+ *         uint16_t flags;
+ *         uint8_t key[64];
+ *     } pmk;
+ *     pmk.key_len = strlen(passphrase);
+ *     pmk.flags = 0;
+ *     memcpy(pmk.key, passphrase, pmk.key_len);
+ *     cyw_ioctl(WLC_SET_WSEC_PMK, &pmk, sizeof(pmk), true);
+ *
+ *     // 5. Установить WSEC (шифрование)
+ *     uint32_t wsec = 6;  // AES + TKIP
+ *     cyw_ioctl(WLC_SET_WSEC, &wsec, 4, true);
+ *
+ *     // 6. Установить SSID (это запускает подключение)
+ *     struct {
+ *         uint32_t ssid_len;
+ *         char ssid[32];
+ *     } wlc_ssid;
+ *     wlc_ssid.ssid_len = strlen(ssid);
+ *     memcpy(wlc_ssid.ssid, ssid, wlc_ssid.ssid_len);
+ *     cyw_ioctl(WLC_SET_SSID, &wlc_ssid, sizeof(wlc_ssid), true);
+ *
+ *     // 7. Ждать события WLC_E_LINK или WLC_E_SET_SSID
+ *     //    с status = WLC_E_STATUS_SUCCESS
+ *
+ *     return CYW_OK;
+ * }
+ */
+
+/*
+ * TODO 3: cyw_disconnect() - Отключение от сети
+ *
+ * cyw_err_t cyw_disconnect(void)
+ * {
+ *     cyw_ioctl(WLC_DISASSOC, NULL, 0, true);
+ *     return CYW_OK;
+ * }
+ */
+
+/*
+ * TODO 4: cyw_is_connected() - Проверка подключения
+ *
+ * bool cyw_is_connected(void)
+ * {
+ *     uint8_t bssid[6];
+ *     cyw_ioctl(WLC_GET_BSSID, bssid, 6, false);
+ *     // Если bssid != 00:00:00:00:00:00, то подключены
+ *     return (bssid[0] | bssid[1] | bssid[2] |
+ *             bssid[3] | bssid[4] | bssid[5]) != 0;
+ * }
+ */
+
+/*
+ * TODO 5: cyw_get_rssi() - Получить уровень сигнала
+ *
+ * int cyw_get_rssi(void)
+ * {
+ *     int32_t rssi = 0;
+ *     cyw_ioctl(WLC_GET_RSSI, &rssi, 4, false);
+ *     return rssi;
+ * }
+ */
+
+/*
+ * TODO 6: Event Handler - Обработка событий WiFi
+ *
+ * В cyw_poll() добавить парсинг событий:
+ *
+ * typedef struct {
+ *     uint16_t version;
+ *     uint16_t flags;
+ *     uint32_t event_type;    // WLC_E_*
+ *     uint32_t status;
+ *     uint32_t reason;
+ *     uint32_t auth_type;
+ *     uint32_t datalen;
+ *     uint8_t addr[6];
+ *     char ifname[16];
+ *     uint8_t ifidx;
+ *     uint8_t bsscfgidx;
+ * } wl_event_msg_t;
+ *
+ * События:
+ *   WLC_E_LINK        = 16  - Link up/down
+ *   WLC_E_AUTH        = 3   - Authentication
+ *   WLC_E_ASSOC       = 0   - Association
+ *   WLC_E_SET_SSID    = 46  - SSID set result
+ *   WLC_E_ESCANRESULT = 69  - Scan result
+ */
+
+/*
+ * TODO 7: IOCTL номера (добавить в cyw55500_regs.h)
+ *
+ * #define WLC_GET_MAGIC         0
+ * #define WLC_GET_VERSION       1
+ * #define WLC_UP                2
+ * #define WLC_DOWN              3
+ * #define WLC_SET_INFRA         20
+ * #define WLC_SET_AUTH          22
+ * #define WLC_SET_SSID          26
+ * #define WLC_SET_WSEC          134
+ * #define WLC_SET_WSEC_PMK      268
+ * #define WLC_GET_RSSI          127
+ * #define WLC_GET_BSSID         23
+ * #define WLC_DISASSOC          52
+ * #define WLC_SCAN              50
+ * #define WLC_GET_VAR           262
+ * #define WLC_SET_VAR           263
+ */

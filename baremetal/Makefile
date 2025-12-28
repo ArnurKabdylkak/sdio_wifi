@@ -38,6 +38,7 @@ CFLAGS += -ffreestanding -nostdlib -fno-builtin
 CFLAGS += -I.
 CFLAGS += -I$(LITEX_INC)
 CFLAGS += -DCYW_DEBUG=0
+CFLAGS += -DUSE_EMBEDDED_FW=1
 
 # Linker flags
 LDFLAGS  = $(ARCH_FLAGS)
@@ -58,10 +59,10 @@ ASRCS = startup.S
 # Object files
 OBJS = $(SRCS:.c=.o) $(ASRCS:.S=.o)
 
-# Firmware files (optional - uncomment if embedding)
-#FW_BIN = ../infineon-lp-main/code/wifi/firmware/FCS96xNLPAAMD/cyfmac55500-sdio.trxse
-#NVRAM_TXT = ../infineon-lp-main/code/wifi/blob_nv/FCS962NLPAAMD/cyfmac55500-sdio.txt
-#FW_OBJS = fw_cyfmac55500.o nvram_cyfmac55500.o
+# Firmware files - embed into binary
+FW_BIN = cyfmac55500-sdio.trxse
+NVRAM_TXT = cyfmac55500-sdio.txt
+FW_OBJS = fw_cyfmac55500.o nvram_cyfmac55500.o
 
 #============================================================================
 # Build Rules
@@ -69,14 +70,17 @@ OBJS = $(SRCS:.c=.o) $(ASRCS:.S=.o)
 
 .PHONY: all clean flash load sim size check-litex
 
-all: check-litex $(TARGET).elf $(TARGET).bin $(TARGET).hex size
+all: check-litex $(TARGET).elf $(TARGET).bin $(TARGET)_fw.bin $(TARGET).hex size
 
 $(TARGET).elf: $(OBJS) $(FW_OBJS) linker.ld
 	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(FW_OBJS) -lgcc
 	$(OBJDUMP) -d $@ > $(TARGET).lst
 
 $(TARGET).bin: $(TARGET).elf
-	$(OBJCOPY) -O binary $< $@
+	$(OBJCOPY) -O binary -j .text -j .rodata $< $@
+
+$(TARGET)_fw.bin: $(TARGET).elf
+	$(OBJCOPY) -O binary -j .firmware $< $@
 
 $(TARGET).hex: $(TARGET).elf
 	$(OBJCOPY) -O ihex $< $@
@@ -91,18 +95,18 @@ $(TARGET).hex: $(TARGET).elf
 fw_cyfmac55500.o: $(FW_BIN)
 	$(OBJCOPY) -I binary -O elf32-littleriscv -B riscv \
 		--rename-section .data=.rodata,alloc,load,readonly,data,contents \
-		--redefine-sym _binary_$(subst .,_,$(subst /,_,$(FW_BIN)))_start=_binary_cyfmac55500_sdio_bin_start \
-		--redefine-sym _binary_$(subst .,_,$(subst /,_,$(FW_BIN)))_end=_binary_cyfmac55500_sdio_bin_end \
-		--redefine-sym _binary_$(subst .,_,$(subst /,_,$(FW_BIN)))_size=_binary_cyfmac55500_sdio_bin_size \
+		--redefine-sym _binary_cyfmac55500_sdio_trxse_start=_binary_cyfmac55500_sdio_bin_start \
+		--redefine-sym _binary_cyfmac55500_sdio_trxse_end=_binary_cyfmac55500_sdio_bin_end \
+		--redefine-sym _binary_cyfmac55500_sdio_trxse_size=_binary_cyfmac55500_sdio_bin_size \
 		$< $@
 
 # Embed NVRAM
 nvram_cyfmac55500.o: $(NVRAM_TXT)
 	$(OBJCOPY) -I binary -O elf32-littleriscv -B riscv \
 		--rename-section .data=.rodata,alloc,load,readonly,data,contents \
-		--redefine-sym _binary_$(subst .,_,$(subst /,_,$(NVRAM_TXT)))_start=_binary_cyfmac55500_sdio_txt_start \
-		--redefine-sym _binary_$(subst .,_,$(subst /,_,$(NVRAM_TXT)))_end=_binary_cyfmac55500_sdio_txt_end \
-		--redefine-sym _binary_$(subst .,_,$(subst /,_,$(NVRAM_TXT)))_size=_binary_cyfmac55500_sdio_txt_size \
+		--redefine-sym _binary_cyfmac55500_sdio_txt_start=_binary_cyfmac55500_sdio_txt_start \
+		--redefine-sym _binary_cyfmac55500_sdio_txt_end=_binary_cyfmac55500_sdio_txt_end \
+		--redefine-sym _binary_cyfmac55500_sdio_txt_size=_binary_cyfmac55500_sdio_txt_size \
 		$< $@
 
 size: $(TARGET).elf
@@ -110,7 +114,7 @@ size: $(TARGET).elf
 
 clean:
 	rm -f $(OBJS) $(FW_OBJS)
-	rm -f $(TARGET).elf $(TARGET).bin $(TARGET).hex $(TARGET).lst
+	rm -f $(TARGET).elf $(TARGET).bin $(TARGET)_fw.bin $(TARGET).hex $(TARGET).lst
 
 #============================================================================
 # LiteX Integration

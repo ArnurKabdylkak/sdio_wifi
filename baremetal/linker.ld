@@ -25,7 +25,7 @@ SECTIONS
 	{
 		. = ALIGN(8);
 		_frodata = .;
-		*(.rodata .rodata.* .gnu.linkonce.r.*)
+		EXCLUDE_FILE(*fw_cyfmac55500.o *nvram_cyfmac55500.o) *(.rodata .rodata.* .gnu.linkonce.r.*)
 		*(.rodata1)
 		*(.got .got.*)
 		*(.toc .toc.*)
@@ -34,6 +34,17 @@ SECTIONS
 		. = ALIGN(8);
 		_erodata = .;
 	} > rom
+
+	/* Firmware data in DDR RAM (too large for ROM) */
+	.firmware :
+	{
+		. = ALIGN(8);
+		_firmware_start = .;
+		*fw_cyfmac55500.o(.rodata .rodata.*)
+		*nvram_cyfmac55500.o(.rodata .rodata.*)
+		. = ALIGN(8);
+		_firmware_end = .;
+	} > main_ram
 
 	.data :
 	{
